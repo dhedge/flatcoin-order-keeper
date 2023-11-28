@@ -1,4 +1,4 @@
-name: Flatcoin keeper Dev
+name: Flatcoin keeper competition
 
 on:
   workflow_dispatch:
