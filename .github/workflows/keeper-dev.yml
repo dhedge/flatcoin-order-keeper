@@ -64,6 +64,6 @@ jobs:
           envs: PACKAGE_VERSION
           script: |
             docker-compose stop flatcoin-orderkeeper
-            export flatcoinKeeperVersion=$PACKAGE_VERSION
+            export flatcoinOrderKeeperVersion=$PACKAGE_VERSION
             docker-compose pull flatcoin-order-keeper
             docker-compose up -d flatcoin-order-keeper
