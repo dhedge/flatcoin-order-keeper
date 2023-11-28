@@ -58,12 +58,12 @@ jobs:
         env: 
           PACKAGE_VERSION: ${{ steps.get-version.outputs.version }}
         with:
-          host: ${{ secrets.DEV_SERVER_HOST }}
-          username: ${{ secrets.DEV_SERVER_USERNAME }}
-          key: ${{secrets.DEV_SSH_PRIVATE_KEY}}
+          host: ${{ secrets.COMPETITION_SERVER_HOST }}
+          username: ${{ secrets.COMPETITION_SERVER_USERNAME }}
+          key: ${{secrets.COMPETITION_SSH_PRIVATE_KEY}}
           envs: PACKAGE_VERSION
           script: |
-            docker-compose stop flatcoin-orderkeeper
-            export flatcoinKeeperVersion=$PACKAGE_VERSION
+            docker-compose stop flatcoin-order-keeper
+            export flatcoinOrderKeeperVersion=$PACKAGE_VERSION
             docker-compose pull flatcoin-order-keeper
             docker-compose up -d flatcoin-order-keeper
