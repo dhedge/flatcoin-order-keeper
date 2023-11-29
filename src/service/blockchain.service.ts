@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EthersContract, InjectContractProvider, InjectEthersProvider } from 'nestjs-ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Contract, ethers, Wallet } from 'ethers';
+import { BigNumber, Contract, ethers, Wallet } from "ethers";
 import * as DelayedOrder from '../contracts/abi/DelayedOrder.json';
 
 @Injectable()
@@ -23,14 +23,8 @@ export class BlockchainService {
   }
 
   public async executeOrder(priceFeedUpdateData: string[] | null, account: string): Promise<string> {
-    this.logger.log(`estimating order ${account} execution...`);
-    const estimated = await this.delayedOrderContractWithSigner.estimateGas.executeOrder(account, priceFeedUpdateData, {
-      value: '1',
-    });
-
-    this.logger.log(`order ${account} execution tx estimated: ${estimated}`);
     const tx = await this.delayedOrderContractWithSigner.executeOrder(account, priceFeedUpdateData, {
-      gasLimit: ethers.utils.hexlify(estimated.add(estimated.mul(40).div(100))),
+      gasLimit: ethers.utils.hexlify(BigNumber.from('2000000')),
       gasPrice: ethers.utils.parseUnits('1.5', 'gwei'),
       value: '1',
     });
