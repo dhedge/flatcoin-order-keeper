@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EthersContract, InjectContractProvider, InjectEthersProvider } from 'nestjs-ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { BigNumber, Contract, ethers, Wallet } from "ethers";
+import { Contract, ethers, Wallet } from "ethers";
 import * as DelayedOrder from '../contracts/abi/DelayedOrder.json';
+import { ErrorHandler } from './error.handler';
 
 @Injectable()
 export class BlockchainService {
@@ -16,6 +17,7 @@ export class BlockchainService {
     @InjectEthersProvider()
     private readonly customProvider: JsonRpcProvider,
     private readonly logger: Logger,
+    private readonly errorHandler: ErrorHandler,
   ) {
     this.delayedOrderContract = new ethers.Contract(process.env.DELAYED_ORDER_CONTRACT, DelayedOrder, customProvider);
     this.signer = new Wallet(process.env.SIGNER_WALLET_PK, this.customProvider);
@@ -24,9 +26,17 @@ export class BlockchainService {
 
   public async executeOrder(priceFeedUpdateData: string[] | null, account: string): Promise<string> {
     this.logger.log(`estimating order ${account} execution...`);
-    const estimated = await this.delayedOrderContractWithSigner.estimateGas.executeOrder(account, priceFeedUpdateData, {
-      value: '1',
-    });
+
+    let estimated;
+    try {
+      estimated = await this.delayedOrderContractWithSigner.estimateGas.executeOrder(account, priceFeedUpdateData, {
+        value: '1',
+      });
+    } catch (error) {
+      const gasEstimateErrorName = this.errorHandler.getGasEstimateErrorName(error);
+      this.logger.error(`failed to estimate gas for executeOrder with error name: ${gasEstimateErrorName} for account: ${account}`);
+      throw new Error(error);
+    }
 
     this.logger.log(`order ${account} execution tx estimated: ${estimated}`);
     const tx = await this.delayedOrderContractWithSigner.executeOrder(account, priceFeedUpdateData, {
