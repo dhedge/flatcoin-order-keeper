@@ -1,9 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import * as FlatcoinErrors from '../contracts/abi/FlatcoinErrors.json';
+import { ethers } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
 
 @Injectable()
 export class ErrorHandler {
-  constructor(private readonly notificationService: NotificationService, private readonly logger: Logger) {}
+  private readonly errorInterface: Interface;
+
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly logger: Logger
+  ) {
+    this.errorInterface = new ethers.utils.Interface(FlatcoinErrors);
+  }
 
   public async handleError(message: string, error: any) {
     const messageToSlack = `${message}, error ${error?.message}`;
@@ -12,6 +22,18 @@ export class ErrorHandler {
 
     if (process.env.SLACK_NOTIFICATIONS_ENABLED) {
       await this.notificationService.sendNotification(messageToSlack);
+    }
+  }
+
+  public getGasEstimateErrorName(gasEstimateError: string): string {
+    if (!gasEstimateError) return "";
+    const jsonStartIndex = gasEstimateError.toString().indexOf("error=") + 6;
+    const jsonEndIndex = gasEstimateError.toString().indexOf(", code=");
+    if (jsonStartIndex > 0) {
+      const errorJSON = JSON.parse(gasEstimateError.toString().slice(jsonStartIndex, jsonEndIndex));
+      return this.errorInterface.parseError(errorJSON.error.data).name;
+    } else {
+      return gasEstimateError;
     }
   }
 }
