@@ -3,9 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { OrderQueueService } from './service/order-queue.service';
 import { ErrorHandler } from './service/error.handler';
 import { chunk } from 'lodash';
-import { OrderExecutorService } from './executor/order-executor.service';
+import { OrderExecutorService } from './service/order-executor.service';
 import { delay } from './utils/utils';
 import { AnnouncedOrder } from './sharedTypes/announcedOrder.types';
+import { BlockchainService } from './service/blockchain.service';
 
 @Injectable()
 export class OrderKeeper {
@@ -16,6 +17,7 @@ export class OrderKeeper {
     private readonly logger: Logger,
     private readonly errorHandler: ErrorHandler,
     private readonly orderExecutor: OrderExecutorService,
+    private readonly blockchainService: BlockchainService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
@@ -23,8 +25,6 @@ export class OrderKeeper {
     try {
       const orders = this.queueService.getAllOrders();
       if (orders.length > 0) {
-        this.logger.log('start order execution keeper ... ');
-        this.logger.log(`in queue ${orders.length} unexecuted orders`);
         const liveOrders = orders.filter((order) => {
           const isExpired = order.expirationTime < Date.now();
           if (isExpired) {
@@ -33,9 +33,13 @@ export class OrderKeeper {
           }
           return !isExpired;
         });
+
+        this.logger.log(`in queue ${orders.length} unexecuted orders, executable orders count: ${liveOrders.length}`);
         for (const ordersBatch of chunk(liveOrders, 5)) {
+          let nonce = await this.blockchainService.getNonce();
           const batches = ordersBatch.map((order) => {
-            this.execAsyncKeeperCallback(order.account, () => this.executeOrder(order));
+            this.execAsyncKeeperCallback(order.account, () => this.executeOrder(order, nonce));
+            nonce++;
           });
           await Promise.all(batches);
           await delay(100);
@@ -46,8 +50,8 @@ export class OrderKeeper {
     }
   }
 
-  private async executeOrder(order: AnnouncedOrder) {
-    await this.orderExecutor.getPricesAndExecuteOrder(order);
+  private async executeOrder(order: AnnouncedOrder, nonce: number) {
+    await this.orderExecutor.getPricesAndExecuteOrder(order, nonce);
     this.queueService.removeOrder(order.account);
   }
 

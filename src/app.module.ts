@@ -2,7 +2,7 @@ import { Logger, Module } from '@nestjs/common';
 import { BlockchainModule } from './config/blockchainModule';
 import { AppPriceService } from './service/app-price.service';
 import { ConfigModule } from '@nestjs/config';
-import { OrderExecutorService } from './executor/order-executor.service';
+import { OrderExecutorService } from './service/order-executor.service';
 import { LoggingModule } from './config/logging.module';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { ScheduleModule } from '@nestjs/schedule';

@@ -3,10 +3,10 @@ import { Logger } from '@nestjs/common';
 import { OrderKeeper } from '../src/order.keeper';
 import { OrderQueueService } from '../src/service/order-queue.service';
 import { ErrorHandler } from '../src/service/error.handler';
-import { OrderExecutorService } from '../src/executor/order-executor.service';
+import { OrderExecutorService } from '../src/service/order-executor.service';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { EthersContract } from 'nestjs-ethers';
-import * as DelayedOrder from '../src/contracts/abi/DelayedOrder.json';
+import { DelayedOrder } from '../src/contracts/abi/delayed-order';
 import { BlockchainService } from '../src/service/blockchain.service';
 import { ConfigService } from '../src/config/config.service';
 import { Contract } from '@ethersproject/contracts';
@@ -33,13 +33,13 @@ describe('OrderKeeper', () => {
     }).compile();
 
     process.env.PYTH_NETWORK_PRICE_SERVCE_URI = 'https://test';
-    process.env.DELAYED_ORDER_CONTRACT = '0x0000000000000000000000000000000000000001';
+    process.env.DELAYED_ORDER_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.FLATCOIN_VAULT_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.SIGNER_WALLET_PK = '0000000000000000000000000000000000000000000000000000000000000001';
 
     provider = new JsonRpcProvider();
     ethersContract = new EthersContract(provider);
-    mockContract = ethersContract.create(process.env.DELAYED_ORDER_CONTRACT, DelayedOrder);
+    mockContract = ethersContract.create(process.env.DELAYED_ORDER_CONTRACT_ADDRESS, DelayedOrder);
     logger = module.get<Logger>(Logger) as Logger;
     blockchainService = new BlockchainService(ethersContract, provider, logger, errorHandler);
     jest.spyOn(blockchainService, 'getMaxExecutabilityAge').mockImplementation(() => Promise.resolve(1200));
@@ -60,7 +60,7 @@ describe('OrderKeeper', () => {
       orderQueueService,
       configService,
     );
-    orderKeeperService = new OrderKeeper(orderQueueService, logger, errorHandler, orderExecutorService);
+    orderKeeperService = new OrderKeeper(orderQueueService, logger, errorHandler, orderExecutorService, blockchainService);
   });
 
   describe('executeKeeper', () => {
@@ -91,8 +91,7 @@ describe('OrderKeeper', () => {
 
       await orderKeeperService.executeKeeper();
 
-      expect(logger.log).toHaveBeenCalledWith('start order execution keeper ... ');
-      expect(logger.log).toHaveBeenCalledWith('in queue 2 unexecuted orders');
+      expect(logger.log).toHaveBeenCalledWith('in queue 2 unexecuted orders, executable orders count: 0');
       expect(logger.log).toHaveBeenCalledWith('order testAccount1 was expired, remove it from queue...');
       expect(logger.log).toHaveBeenCalledWith('order testAccount2 was expired, remove it from queue...');
       expect(orderExecutorService.getPricesAndExecuteOrder).toHaveBeenCalledTimes(0);
@@ -126,8 +125,7 @@ describe('OrderKeeper', () => {
 
       await orderKeeperService.executeKeeper();
 
-      expect(logger.log).toHaveBeenCalledWith('start order execution keeper ... ');
-      expect(logger.log).toHaveBeenCalledWith('in queue 2 unexecuted orders');
+      expect(logger.log).toHaveBeenCalledWith('in queue 2 unexecuted orders, executable orders count: 0');
       expect(orderExecutorService.getPricesAndExecuteOrder).toHaveBeenCalledTimes(0);
       expect(orderQueueService.removeOrder).toHaveBeenCalledTimes(2);
     });
@@ -152,9 +150,9 @@ describe('OrderKeeper', () => {
       jest.spyOn(orderExecutorService, 'getPricesAndExecuteOrder').mockResolvedValueOnce(null);
       jest.spyOn(orderQueueService, 'removeOrder').mockImplementation();
 
-      await orderKeeperService['executeOrder'](order);
+      await orderKeeperService['executeOrder'](order, 1);
 
-      expect(orderExecutorService.getPricesAndExecuteOrder).toHaveBeenCalledWith(order);
+      expect(orderExecutorService.getPricesAndExecuteOrder).toHaveBeenCalledWith(order, 1);
       expect(orderQueueService.removeOrder).toHaveBeenCalledWith(order.account);
     });
   });

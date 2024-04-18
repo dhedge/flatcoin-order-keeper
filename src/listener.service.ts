@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EthersContract, InjectContractProvider, InjectEthersProvider } from 'nestjs-ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Contract } from '@ethersproject/contracts';
-import * as DelayedOrder from './contracts/abi/DelayedOrder.json';
+import { DelayedOrder } from './contracts/abi/delayed-order';
 import { AnnouncedOrder, OrderType } from './sharedTypes/announcedOrder.types';
-import { OrderExecutorService } from './executor/order-executor.service';
+import { OrderExecutorService } from './service/order-executor.service';
 import { OrderQueueService } from './service/order-queue.service';
 import { ErrorHandler } from './service/error.handler';
 
@@ -24,7 +24,7 @@ export class ListenerService {
   }
 
   listenOrderEvents(): void {
-    const delayedOrderContractAddress = process.env.DELAYED_ORDER_CONTRACT;
+    const delayedOrderContractAddress = process.env.DELAYED_ORDER_CONTRACT_ADDRESS;
     this.logger.log(`Listening OrderAnnounced event for contract ${delayedOrderContractAddress} ...`);
     const delayedOrderContract: Contract = this.ethersContract.create(delayedOrderContractAddress, DelayedOrder);
 
@@ -58,7 +58,7 @@ export class ListenerService {
     delayedOrderContract.on('OrderExecuted', async (account, orderType, keeperFee, event) => {
       try {
         this.logger.log(`new OrderExecuted event for account ${account}...`);
-        await this.orderQueue.removeOrder(account);
+        this.orderQueue.removeOrder(account);
         this.logger.log(`order for account ${account} was removed from queue`);
       } catch (error) {
         await this.errorHandler.handleError(`failed to process OrderExecuted event txHash ${event.transactionHash}`, error);
@@ -70,7 +70,7 @@ export class ListenerService {
     delayedOrderContract.on('OrderCancelled', async (account, orderType, event) => {
       try {
         this.logger.log(`new OrderCancelled event for account ${account}...`);
-        await this.orderQueue.removeOrder(account);
+        this.orderQueue.removeOrder(account);
         this.logger.log(`order for account ${account} was removed from queue`);
       } catch (error) {
         await this.errorHandler.handleError(`failed to process OrderCancelled event txHash ${event.transactionHash}`, error);

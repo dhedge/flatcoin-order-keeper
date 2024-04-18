@@ -2,11 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EthersContract, InjectContractProvider, InjectEthersProvider } from 'nestjs-ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { AnnouncedOrder } from '../sharedTypes/announcedOrder.types';
-import { AppPriceService } from '../service/app-price.service';
-import { BlockchainService } from '../service/blockchain.service';
-import { OrderQueueService } from '../service/order-queue.service';
-import { ErrorHandler } from '../service/error.handler';
+import { AppPriceService } from './app-price.service';
+import { BlockchainService } from './blockchain.service';
+import { OrderQueueService } from './order-queue.service';
+import { ErrorHandler } from './error.handler';
 import { ConfigService } from '../config/config.service';
+import { BigNumber } from 'ethers';
 
 @Injectable()
 export class OrderExecutorService {
@@ -32,7 +33,7 @@ export class OrderExecutorService {
 
       setTimeout(async () => {
         try {
-          await this.getPricesAndExecuteOrder(order);
+          await this.getPricesAndExecuteOrder(order, null);
         } catch (error) {
           this.orderQueue.addOrder(order);
           await this.errorHandler.handleError(`failed to execute order ${order.account} => put it to queue`, error);
@@ -41,12 +42,14 @@ export class OrderExecutorService {
     } else this.logger.log(`order ${order.account} expired`);
   }
 
-  public async getPricesAndExecuteOrder(order: AnnouncedOrder): Promise<void> {
+  public async getPricesAndExecuteOrder(order: AnnouncedOrder, nonce: number): Promise<void> {
     this.logger.log(`start processing order ${order.account}...`);
     const account = order.account;
     const prices = await this.appPriceService.getPriceUpdates();
     this.logger.log(`prices received, start executing order ${account} ...`);
-    const resultTxHash = await this.blockchainService.executeOrder(prices, account);
+    const maxPriorityFeePerGas: BigNumber = BigNumber.from(await this.maxPriorityFeePerGasWithRetry(3, 500));
+
+    const resultTxHash = await this.blockchainService.executeOrder(prices, account, maxPriorityFeePerGas, nonce);
     this.logger.log(`order ${account} was executed, execution txHash: ${resultTxHash}`);
   }
 
@@ -60,5 +63,26 @@ export class OrderExecutorService {
     const orderExpirationTime = order.blockTimestamp + this.configService.maxExecutabilityAge;
     order.expirationTime = orderExpirationTime;
     return orderExpirationTime;
+  }
+
+  async maxPriorityFeePerGasWithRetry(maxRetries: number, timeoutMillis: number): Promise<BigNumber> {
+    return this.retry<any>(() => this.maxPriorityFeePerGas.bind(this)(), maxRetries, timeoutMillis);
+  }
+
+  public maxPriorityFeePerGas(): Promise<any> {
+    return this.customProvider.send('eth_maxPriorityFeePerGas', null);
+  }
+
+  async retry<T>(func: () => Promise<T>, maxRetries: number, timeoutMillis: number): Promise<T> {
+    for (let retries = 0; retries < maxRetries; retries++) {
+      try {
+        return await func();
+      } catch (err) {
+        this.logger.error(`Error querying ${func.name} (retries: ${retries}): ${err.message}`);
+        // delay before the next retry
+        await new Promise((resolve) => setTimeout(resolve, timeoutMillis)); // 1-second delay
+      }
+    }
+    throw new Error(`Max retry attempts reached`);
   }
 }
