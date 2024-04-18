@@ -1,14 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Logger } from '@nestjs/common';
 import { ListenerService } from '../../src/listener.service';
-import { OrderExecutorService } from '../../src/executor/order-executor.service';
+import { OrderExecutorService } from '../../src/service/order-executor.service';
 import { OrderQueueService } from '../../src/service/order-queue.service';
 import { EthersContract } from 'nestjs-ethers';
 import { Contract } from '@ethersproject/contracts';
 import { ErrorHandler } from '../../src/service/error.handler';
 import { JsonRpcProvider } from '@ethersproject/providers';
-import * as DelayedOrder from '../../src/contracts/abi/DelayedOrder.json';
-import { AnnouncedOrder, OrderType } from '../../src/sharedTypes/announcedOrder.types';
+import { DelayedOrder } from '../../src/contracts/abi/delayed-order';
 import { ConfigService } from '../../src/config/config.service';
 import { BlockchainService } from '../../src/service/blockchain.service';
 import { AppPriceService } from '../../src/service/app-price.service';
@@ -30,7 +29,7 @@ describe('ListenerService', () => {
   let appPriceService: AppPriceService;
 
   beforeAll(async () => {
-    process.env.DELAYED_ORDER_CONTRACT = '0x0000000000000000000000000000000000000001';
+    process.env.DELAYED_ORDER_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.FLATCOIN_VAULT_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.SIGNER_WALLET_PK = '0000000000000000000000000000000000000000000000000000000000000001';
     process.env.PYTH_NETWORK_PRICE_SERVCE_URI = 'https://test';
@@ -44,7 +43,7 @@ describe('ListenerService', () => {
     evmPriceServiceConnection = new EvmPriceServiceConnection(process.env.PYTH_NETWORK_PRICE_SERVCE_URI);
     provider = new JsonRpcProvider();
     ethersContract = new EthersContract(provider);
-    mockContract = ethersContract.create(process.env.DELAYED_ORDER_CONTRACT, DelayedOrder);
+    mockContract = ethersContract.create(process.env.DELAYED_ORDER_CONTRACT_ADDRESS, DelayedOrder);
     logger = module.get<Logger>(Logger) as Logger;
     blockchainService = new BlockchainService(ethersContract, provider, logger, errorHandler);
     jest.spyOn(blockchainService, 'getMaxExecutabilityAge').mockResolvedValue(Promise.resolve(1200));
@@ -84,7 +83,7 @@ describe('ListenerService', () => {
 
       listenerService.listenOrderEvents();
 
-      expect(ethersContract.create).toHaveBeenCalledWith(process.env.DELAYED_ORDER_CONTRACT, DelayedOrder);
+      expect(ethersContract.create).toHaveBeenCalledWith(process.env.DELAYED_ORDER_CONTRACT_ADDRESS, DelayedOrder);
       expect(listenerService.listenOrderAnnouncedEvent).toHaveBeenCalledWith(mockContract);
       expect(listenerService.listenOrderExecutedEvent).toHaveBeenCalledWith(mockContract);
       expect(listenerService.listenOrderCancelledEvent).toHaveBeenCalledWith(mockContract);

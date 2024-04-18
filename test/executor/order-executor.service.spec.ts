@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Logger } from '@nestjs/common';
-import { OrderExecutorService } from '../../src/executor/order-executor.service';
+import { OrderExecutorService } from '../../src/service/order-executor.service';
 import { AppPriceService } from '../../src/service/app-price.service';
 import { ErrorHandler } from '../../src/service/error.handler';
 import { BlockchainService } from '../../src/service/blockchain.service';
@@ -9,6 +9,7 @@ import { ConfigService } from '../../src/config/config.service';
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { EthersContract } from 'nestjs-ethers';
+import { BigNumber } from 'ethers';
 
 describe('OrderExecutorService', () => {
   let app: INestApplication;
@@ -32,7 +33,7 @@ describe('OrderExecutorService', () => {
 
     process.env.PYTH_NETWORK_PRICE_SERVCE_URI = 'https://test';
     process.env.PYTH_NETWORK_ETH_USD_PRICE_ID = 'price_id';
-    process.env.DELAYED_ORDER_CONTRACT = '0x0000000000000000000000000000000000000001';
+    process.env.DELAYED_ORDER_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.FLATCOIN_VAULT_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.SIGNER_WALLET_PK = '0000000000000000000000000000000000000000000000000000000000000001';
     process.env.ORDER_MIN_EXECUTABILITY_AGE = '5000';
@@ -158,14 +159,14 @@ describe('OrderExecutorService', () => {
       const getPriceUpdatesSpy = jest.spyOn(appPriceService, 'getPriceUpdates').mockResolvedValueOnce(['mockedPrices']);
       const mockedTxHash = 'mockedTxHash';
       const executeOrderSpy = jest.spyOn(blockchainService, 'executeOrder').mockResolvedValueOnce(mockedTxHash);
-
+      jest.spyOn(provider, 'send').mockResolvedValue(12);
       jest.spyOn(logger, 'log').mockImplementation();
       jest.spyOn(orderQueueService, 'removeOrder').mockImplementation();
 
-      await orderExecutorService.getPricesAndExecuteOrder(order);
+      await orderExecutorService.getPricesAndExecuteOrder(order, 1);
 
       expect(getPriceUpdatesSpy).toHaveBeenCalled();
-      expect(executeOrderSpy).toHaveBeenCalledWith(['mockedPrices'], 'testAccount');
+      expect(executeOrderSpy).toHaveBeenCalledWith(['mockedPrices'], 'testAccount', BigNumber.from(12), 1);
       expect(logger.log).toHaveBeenCalledWith(`start processing order ${order.account}...`);
       expect(logger.log).toHaveBeenCalledWith(`prices received, start executing order ${order.account} ...`);
       expect(logger.log).toHaveBeenCalledWith(`order ${order.account} was executed, execution txHash: ${mockedTxHash}`);

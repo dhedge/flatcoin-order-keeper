@@ -18,7 +18,7 @@ export class OrderQueueService {
     this.queueOrders.set(order.account, order);
   }
 
-  public async removeOrder(account: string) {
+  public removeOrder(account: string) {
     this.queueOrders.delete(account);
   }
 

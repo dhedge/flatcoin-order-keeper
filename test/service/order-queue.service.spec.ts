@@ -8,7 +8,6 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { ErrorHandler } from '../../src/service/error.handler';
 
 import { EthersContract } from 'nestjs-ethers';
-import { Wallet } from 'ethers';
 
 describe('OrderQueueService', () => {
   let orderQueueService: OrderQueueService;
@@ -20,7 +19,7 @@ describe('OrderQueueService', () => {
   let ethersContract: EthersContract;
 
   beforeAll(async () => {
-    process.env.DELAYED_ORDER_CONTRACT = '0x0000000000000000000000000000000000000001';
+    process.env.DELAYED_ORDER_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
     process.env.FLATCOIN_VAULT_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001';
 
     process.env.SIGNER_WALLET_PK = '0000000000000000000000000000000000000000000000000000000000000001';

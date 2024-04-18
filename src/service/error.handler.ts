@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-
-import * as FlatcoinErrors from '../contracts/abi/FlatcoinErrors.json';
+import { FlatcoinErrors } from '../contracts/abi/flatcoin-errors';
 import { ethers } from 'ethers';
 import { Interface } from 'ethers/lib/utils';
 
