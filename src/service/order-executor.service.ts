@@ -53,7 +53,7 @@ export class OrderExecutorService {
     this.logger.log(`order ${account} was executed, execution txHash: ${resultTxHash}`);
   }
 
-  private getExecuteInTime(order: AnnouncedOrder): number {
+  public getExecuteInTime(order: AnnouncedOrder): number {
     const executeInTime = order.blockTimestamp + this.configService.minExecutabilityAge;
     order.executeInTime = executeInTime;
     return executeInTime;

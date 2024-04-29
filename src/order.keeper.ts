@@ -31,7 +31,8 @@ export class OrderKeeper {
             this.logger.log(`order ${order.account} was expired, remove it from queue...`);
             this.queueService.removeOrder(order.account);
           }
-          return !isExpired;
+          const executableTimeReached = Date.now() > this.orderExecutor.getExecuteInTime(order);
+          return !isExpired && executableTimeReached && !this.activeKeeperTasks[order.account];
         });
 
         this.logger.log(`in queue ${orders.length} unexecuted orders, executable orders count: ${liveOrders.length}`);
