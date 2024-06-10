@@ -53,8 +53,8 @@ export class OrderExecutorService {
     try {
       resultTxHash = await this.blockchainService.executeOrder(prices, account, maxPriorityFeePerGas, nonce);
     } catch (error) {
-     if (error.name === 'DelayedOrderInvalid') {
-        this.logger.log(`${error.name} for order for account ${order.account}. Removing it from order queue`)
+      if (error.name === 'DelayedOrderInvalid') {
+        this.logger.log(`${error.name} for order for account ${order.account}. Removing it from order queue`);
         this.orderQueue.removeOrder(order.account);
       }
       throw error;
