@@ -507,4 +507,15 @@ export const FlatcoinErrors = [
     name: 'ZeroValue',
     type: 'error',
   },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'DelayedOrderInvalid',
+    type: 'error',
+  },
 ];

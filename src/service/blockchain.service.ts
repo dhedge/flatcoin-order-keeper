@@ -38,7 +38,9 @@ export class BlockchainService {
     } catch (error) {
       const gasEstimateErrorName = this.errorHandler.getGasEstimateErrorName(error);
       this.logger.error(`failed to estimate gas for executeOrder with error name: ${gasEstimateErrorName} for account: ${account}`);
-      throw new Error(error);
+      const newError = new Error(error);
+      newError.name = gasEstimateErrorName;
+      throw newError;
     }
 
     this.logger.log(`order ${account} execution tx estimated: ${estimated}`);

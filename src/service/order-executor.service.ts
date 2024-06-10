@@ -49,7 +49,16 @@ export class OrderExecutorService {
     this.logger.log(`prices received, start executing order ${account} ...`);
     const maxPriorityFeePerGas: BigNumber = BigNumber.from(await this.maxPriorityFeePerGasWithRetry(3, 500));
 
-    const resultTxHash = await this.blockchainService.executeOrder(prices, account, maxPriorityFeePerGas, nonce);
+    let resultTxHash;
+    try {
+      resultTxHash = await this.blockchainService.executeOrder(prices, account, maxPriorityFeePerGas, nonce);
+    } catch (error) {
+     if (error.name === 'DelayedOrderInvalid') {
+        this.logger.log(`${error.name} for order for account ${order.account}. Removing it from order queue`)
+        this.orderQueue.removeOrder(order.account);
+      }
+      throw error;
+    }
     this.logger.log(`order ${account} was executed, execution txHash: ${resultTxHash}`);
   }
 
